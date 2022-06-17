@@ -1,4 +1,5 @@
 from urllib import response
+import django
 from django.shortcuts import render
 from django.http import JsonResponse
 
@@ -6,7 +7,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from .serializers import TodolistSerializer
-from .models import Todolist
+from .models import Todolist, Profile
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login
+
+import uuid
 
 @api_view(['GET'])
 def all_todolist(request):
@@ -20,7 +25,8 @@ def add_todolist(request):
         serializer = TodolistSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            data['status'] = 'created'
+            return Response(data=data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
     
 @api_view(['PUT'])
@@ -47,6 +53,69 @@ def delete_todolist(request, TID):
             return Response(data=data, status=status.HTTP_200_OK)
         data['status'] = 'failed'
         return Response(data=data, status=status.HTTP_404_NOT_FOUND)
+    
+@api_view(['POST'])
+def register_newuser(request):
+    if request.method == 'POST':
+        data = request.data
+        username = data.get('username')
+        password = data.get('password')
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        usertype = data.get('usertype')
+        mobile = data.get('mobile')
+        
+        if username == None and password == None:
+            print('username & password required')
+            return Response(data={'status':'username and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            User.objects.get(username=username)
+            print('user-exist')
+            return Response(data={'status': 'user-exist'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            newuser = User()
+            newuser.username = username
+            newuser.set_password(password)
+            newuser.first_name = first_name
+            newuser.last_name = last_name
+            newuser.save()
+            
+            newprofile = Profile()
+            user = User.objects.get(username=username)
+            newprofile.user = user
+            newprofile.usertype = '' if usertype == None else usertype
+            newprofile.mobile = mobile
+            gentoken = uuid.uuid1().hex
+            newprofile.token = gentoken
+            newprofile.save()
+            print('user-created')
+            return Response(data={'status': 'user-created', 
+                                'token': gentoken,
+                                'first_name': first_name,
+                                'last_name': last_name,
+                                'username': username }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def authenticate_app(request):
+    if request.method == 'POST':
+        data = request.data
+        username = data.get('username')
+        password = data.get('password')
+        
+        try:
+            user = authenticate(username=username, password=password)
+            login(request, user)
+            user = User.objects.get(username=username)
+            return Response(data={'status': 'success', 
+                                'token': user.profile.token,
+                                'first_name': user.first_name,
+                                'last_name': user.last_name,
+                                'username': username }, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response(data={'status': 'failed'}, status=status.HTTP_404_NOT_FOUND)
+
 
 data = [
     {

@@ -1,0 +1,27 @@
+    Alias /static /home/superadmin/flutterapi/static
+	<Directory /home/superadmin/flutterapi/static>
+		Require all granted
+	</Directory>
+
+	Alias /media /home/superadmin/flutterapi/media
+	<Directory /home/superadmin/flutterapi/media>
+		Require all granted
+	</Directory>
+
+	<Directory /home/superadmin/flutterapi/flutterapi>
+				<Files wsgi.py>
+			Require all granted
+		</Files>
+		</Directory>
+
+	WSGIScriptAlias / /home/superadmin/flutterapi/flutterapi/wsgi.py
+	WSGIDaemonProcess django_app python-path=/home/superadmin/flutterapi python-home=/home/superadmin/venv
+	WSGIProcessGroup django_app
+
+
+sudo chown :www-data flutterapi/db.sqlite3
+sudo chmod 777 flutterapi/db.sqlite3
+sudo chown 777 flutterapi/db.sqlite3
+sudo chown :www-data flutterapi/
+sudo chown -R :www-data flutterapi/media
+sudo chown -R 775 flutterapi/media
